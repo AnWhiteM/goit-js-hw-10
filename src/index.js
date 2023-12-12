@@ -1,53 +1,64 @@
-import { fetchBreeds, fetchCatByBreed } from './js/cat';
+import Notiflix from 'notiflix';
+import SlimSelect from 'slim-select';
+import 'slim-select/dist/slimselect.css';
 
 const breedSelect = document.querySelector('.breed-select');
 const catInfo = document.querySelector('.cat-info');
 const loader = document.querySelector('.loader');
-const error = document.querySelector('.error');
 
-function populateBreedsSelect() {
-  fetchBreeds()
-    .then(breeds => {
-      breeds.forEach(breed => {
-        const option = document.createElement('option');
-        option.value = breed.id;
-        option.text = breed.name;
-        breedSelect.add(option);
-      });
-      breedSelect.style.display = 'block';
-      loader.style.display = 'none';
-    })
-    .catch(() => {
-      loader.style.display = 'none';
-      error.style.display = 'block';
+import { fetchBreeds, fetchCatByBreed } from './js/cat-api';
+
+breedSelect.style.visibility = 'hidden';
+
+fetchBreeds()
+  .then(breeds => {
+    breedSelect.style.visibility = 'visible';
+
+    loader.style.display = 'none';
+
+    const cats = breeds
+      .map(
+        breed => `
+    <option value="${breed.id}">${breed.name}</optiom>
+    `
+      )
+      .join('');
+
+    breedSelect.insertAdjacentHTML('beforeend', cats);
+    new SlimSelect({
+      select: breedSelect,
     });
-}
+  })
+  .catch(error => {
+    loader.style.display = 'none';
+    Notiflix.Notify.failure(
+      'Oops! Something went wrong! Try reloading the page!'
+    );
+  });
+breedSelect.addEventListener('change', function () {
+  const selectedBreedId = this.value;
+  catInfo.innerHTML = '';
 
-function showCatInfo(breedId) {
   loader.style.display = 'block';
-  catInfo.style.display = 'none';
-  error.style.display = 'none';
 
-  fetchCatByBreed(breedId)
-    .then(catData => {
-      const cat = catData[0];
-      console.log(cat);
-
-      catInfo.innerHTML = `<img src="${cat.url}" alt="Cat Image" />
-                    `;
-
+  fetchCatByBreed(selectedBreedId)
+    .then(breeds => {
       loader.style.display = 'none';
-      catInfo.style.display = 'block';
+      const catData = breeds[0];
+
+      catInfo.innerHTML = `
+        <div><img src="${catData.url}" alt="Cat-image" /></div>
+        <div>
+          <h2>${catData.breeds[0].name}</h2>
+          <p>Description: ${catData.breeds[0].description}</p>
+          <p>Temperament: ${catData.breeds[0].temperament}</p>
+        </div> `;
+      catInfo.style.display = 'flex';
     })
-    .catch(() => {
-      loader.style.display = 'none';
-      error.style.display = 'block';
+
+    .catch(error => {
+      Notiflix.Notify.failure(
+        'Oops! Something went wrong! Try reloading the page!'
+      );
     });
-}
-
-breedSelect.addEventListener('change', event => {
-  const selectedBreedId = event.target.value;
-  showCatInfo(selectedBreedId);
 });
-
-populateBreedsSelect();
